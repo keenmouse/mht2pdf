@@ -1,0 +1,17 @@
+# Runtime artifacts
+logs/
+tmp/
+output/
+output_meta_test/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+
+# OS/editor
+.DS_Store
+Thumbs.db

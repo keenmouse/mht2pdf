@@ -1,0 +1,3 @@
+pypdf
+beautifulsoup4
+python-dateutil

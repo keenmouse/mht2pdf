@@ -96,6 +96,16 @@ def clean_text(value: Optional[str]) -> Optional[str]:
     return cleaned or None
 
 
+def normalize_path_arg(value: str) -> str:
+    # Defend against accidental PowerShell multiline artifacts such as
+    # embedded newlines/indentation in a quoted path argument.
+    s = (value or "").strip().strip('"').strip("'")
+    s = s.replace("\r", "").replace("\n", "").replace("\t", "")
+    s = re.sub(r"\\\s+\\", r"\\", s)
+    s = re.sub(r"/\s+/", "/", s)
+    return s
+
+
 def first_nonempty(*values):
     for v in values:
         if isinstance(v, str):
@@ -379,14 +389,14 @@ def main() -> int:
     ap.add_argument("--recurse-subdirs", action="store_true")
     args = ap.parse_args()
 
-    source_root = Path(args.source_root.strip()).resolve()
+    source_root = Path(normalize_path_arg(args.source_root)).resolve()
     has_explicit_output_root = bool(args.output_root)
     if args.output_root:
-        output_root = Path(args.output_root.strip()).resolve()
+        output_root = Path(normalize_path_arg(args.output_root)).resolve()
     else:
         output_root = (source_root / "_pdf_archive").resolve()
     if args.log_path:
-        log_path = Path(args.log_path.strip()).resolve()
+        log_path = Path(normalize_path_arg(args.log_path)).resolve()
     else:
         log_path = (output_root / "logs" / "convert.log").resolve()
 

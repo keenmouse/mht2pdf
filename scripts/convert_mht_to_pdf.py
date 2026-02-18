@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email import policy
 from email.parser import BytesParser
 from pathlib import Path
@@ -71,8 +71,20 @@ def resolve_browser(choice: str) -> Path:
 def parse_dt(dt_str: str) -> Optional[datetime]:
     if not dt_str:
         return None
+    tzinfos = {
+        "UTC": timezone.utc,
+        "GMT": timezone.utc,
+        "EST": timezone(timedelta(hours=-5)),
+        "EDT": timezone(timedelta(hours=-4)),
+        "CST": timezone(timedelta(hours=-6)),
+        "CDT": timezone(timedelta(hours=-5)),
+        "MST": timezone(timedelta(hours=-7)),
+        "MDT": timezone(timedelta(hours=-6)),
+        "PST": timezone(timedelta(hours=-8)),
+        "PDT": timezone(timedelta(hours=-7)),
+    }
     try:
-        return dateparser.parse(dt_str)
+        return dateparser.parse(dt_str, tzinfos=tzinfos)
     except Exception:
         return None
 

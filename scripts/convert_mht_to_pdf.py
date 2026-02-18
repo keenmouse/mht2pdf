@@ -379,14 +379,14 @@ def main() -> int:
     ap.add_argument("--recurse-subdirs", action="store_true")
     args = ap.parse_args()
 
-    source_root = Path(args.source_root).resolve()
+    source_root = Path(args.source_root.strip()).resolve()
     has_explicit_output_root = bool(args.output_root)
     if args.output_root:
-        output_root = Path(args.output_root).resolve()
+        output_root = Path(args.output_root.strip()).resolve()
     else:
         output_root = (source_root / "_pdf_archive").resolve()
     if args.log_path:
-        log_path = Path(args.log_path).resolve()
+        log_path = Path(args.log_path.strip()).resolve()
     else:
         log_path = (output_root / "logs" / "convert.log").resolve()
 

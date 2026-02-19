@@ -19,6 +19,8 @@ from dateutil import parser as dateparser
 from pypdf import PdfReader, PdfWriter
 from pypdf.xmp import XmpInformation
 
+MAX_RENDER_PATH = 245
+
 
 @dataclass
 class ExtractedMetadata:
@@ -104,6 +106,34 @@ def normalize_path_arg(value: str) -> str:
     s = re.sub(r"\\\s+\\", r"\\", s)
     s = re.sub(r"/\s+/", "/", s)
     return s
+
+
+def shorten_output_pdf_path(out_pdf: Path, src: Path, max_path: int = MAX_RENDER_PATH) -> Path:
+    out_str = str(out_pdf)
+    if len(out_str) <= max_path:
+        return out_pdf
+
+    parent = out_pdf.parent
+    ext = out_pdf.suffix or ".pdf"
+    src_hash = hashlib.sha1(str(src).encode("utf-8")).hexdigest()[:12]
+    suffix = f"_{src_hash}"
+
+    # Available characters for filename stem while keeping full path under limit.
+    avail = max_path - len(str(parent)) - 1 - len(ext) - len(suffix)
+    stem = out_pdf.stem
+
+    if avail >= 16:
+        trimmed = stem[:avail].rstrip(" .")
+        if not trimmed:
+            trimmed = src_hash
+        candidate = parent / f"{trimmed}{suffix}{ext}"
+    else:
+        candidate = parent / f"{src_hash}{ext}"
+
+    # Defensive final clamp.
+    if len(str(candidate)) > max_path:
+        candidate = parent / f"{src_hash[:8]}{ext}"
+    return candidate
 
 
 def first_nonempty(*values):
@@ -379,7 +409,9 @@ def apply_pdf_metadata(pdf_path: Path, meta: ExtractedMetadata, source_file: Pat
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Convert MHT/MHTML to PDF with embedded metadata")
-    ap.add_argument("--source-root", required=True)
+    src_group = ap.add_mutually_exclusive_group(required=True)
+    src_group.add_argument("--source-root")
+    src_group.add_argument("--source-file", action="append", help="Process a specific file path; can be repeated.")
     ap.add_argument("--output-root")
     default_log_path = os.environ.get("MHT2PDF_LOG_PATH")
     ap.add_argument("--log-path", default=default_log_path)
@@ -389,7 +421,24 @@ def main() -> int:
     ap.add_argument("--recurse-subdirs", action="store_true")
     args = ap.parse_args()
 
-    source_root = Path(normalize_path_arg(args.source_root)).resolve()
+    files = []
+    source_root = None
+
+    if args.source_root:
+        source_root = Path(normalize_path_arg(args.source_root)).resolve()
+        if args.recurse_subdirs:
+            candidates = source_root.rglob("*")
+        else:
+            candidates = source_root.glob("*")
+        files = [p for p in candidates if p.is_file() and p.suffix.lower() in {".mht", ".mhtml"}]
+    else:
+        raw_files = [Path(normalize_path_arg(p)).resolve() for p in (args.source_file or [])]
+        files = [p for p in raw_files if p.is_file() and p.suffix.lower() in {".mht", ".mhtml"}]
+        if not files:
+            raise RuntimeError("No valid --source-file entries were found.")
+        common_parent = os.path.commonpath([str(p.parent) for p in files])
+        source_root = Path(common_parent).resolve()
+
     has_explicit_output_root = bool(args.output_root)
     if args.output_root:
         output_root = Path(normalize_path_arg(args.output_root)).resolve()
@@ -411,11 +460,6 @@ def main() -> int:
     log(f"Browser: {browser_exe}", log_path)
     log(f"Source: {source_root}", log_path)
 
-    if args.recurse_subdirs:
-        candidates = source_root.rglob("*")
-    else:
-        candidates = source_root.glob("*")
-    files = [p for p in candidates if p.is_file() and p.suffix.lower() in {".mht", ".mhtml"}]
     files.sort()
     if args.max_files > 0:
         files = files[: args.max_files]
@@ -430,12 +474,18 @@ def main() -> int:
         if has_explicit_output_root:
             out_pdf = (output_root / rel).with_suffix(".pdf")
             log_rel = out_pdf.relative_to(output_root)
-        elif args.recurse_subdirs:
+        elif args.source_file or args.recurse_subdirs:
             out_pdf = (src.parent / "_pdf_archive" / f"{src.stem}.pdf").resolve()
             log_rel = out_pdf.relative_to(source_root)
         else:
             out_pdf = (output_root / src.name).with_suffix(".pdf")
             log_rel = out_pdf.relative_to(output_root)
+
+        adjusted = shorten_output_pdf_path(out_pdf, src)
+        if adjusted != out_pdf:
+            log(f"ADJUST path: {rel} -> {adjusted.name}", log_path)
+            out_pdf = adjusted
+
         out_pdf.parent.mkdir(parents=True, exist_ok=True)
 
         if args.skip_existing and out_pdf.exists() and out_pdf.stat().st_size > 0:

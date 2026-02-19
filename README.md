@@ -7,6 +7,7 @@ MHT/MHTML archival conversion with metadata enrichment.
 - Extracts metadata from MHT headers + HTML content.
 - Embeds metadata into standard PDF fields and XMP.
 - Writes JSON sidecars for traceability.
+- Auto-shortens overlong output PDF names (deterministic truncate + hash suffix) to avoid Windows/Chromium path-length write failures.
 
 ## Metadata strategy
 Priority order:
@@ -48,6 +49,18 @@ python <project-root>\scripts\convert_mht_to_pdf.py `
 ### Environment override for log path
 ```powershell
 $env:MHT2PDF_LOG_PATH = "<project-root>\logs\custom.log"
+```
+
+### Process specific files only
+```powershell
+python <project-root>\scripts\convert_mht_to_pdf.py `
+  --source-file "D:\path\one.mht" `
+  --source-file "D:\path\two.mhtml"
+```
+
+### Rerun the known 5 failed Historic Events files
+```powershell
+powershell -ExecutionPolicy Bypass -File <project-root>\scripts\rerun_failed_historic_events.ps1
 ```
 
 ## Output

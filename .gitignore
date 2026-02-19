@@ -3,6 +3,7 @@ logs/
 tmp/
 output/
 output_meta_test/
+output_warncheck/
 
 # Python artifacts
 __pycache__/

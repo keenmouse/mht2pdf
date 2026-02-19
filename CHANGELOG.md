@@ -5,7 +5,6 @@ All notable changes to this project will be documented in this file.
 ## [0.1.4] - 2026-02-18
 ### Added
 - Support for repeated `--source-file` arguments to process specific files directly.
-- Helper script `scripts/rerun_failed_historic_events.ps1` to rerun the known failed Historic Events items.
 
 ### Fixed
 - Automatic deterministic output filename shortening for overlong output paths to avoid Windows/Chromium write failures on long MHT titles.

@@ -58,11 +58,6 @@ python <project-root>\scripts\convert_mht_to_pdf.py `
   --source-file "D:\path\two.mhtml"
 ```
 
-### Rerun the known 5 failed Historic Events files
-```powershell
-powershell -ExecutionPolicy Bypass -File <project-root>\scripts\rerun_failed_historic_events.ps1
-```
-
 ## Output
 - PDFs: `output\...` (mirrors source tree)
 - Sidecars: `*.metadata.json` next to each PDF
